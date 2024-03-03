@@ -1,0 +1,167 @@
+Subject: [PATCH] 2.9
+---
+Index: src/main/java/com/example/demo/service/PostService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/demo/service/PostService.java b/src/main/java/com/example/demo/service/PostService.java
+--- a/src/main/java/com/example/demo/service/PostService.java	(revision 375e36083fb077020bbbbd581dc68ae42a7a746c)
++++ b/src/main/java/com/example/demo/service/PostService.java	(date 1707078151432)
+@@ -1,25 +1,25 @@
+ package com.example.demo.service;
+
+ import com.example.demo.model.Post;
++import com.example.demo.repository.PostRepository;
++import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.stereotype.Service;
+
+-import java.util.ArrayList;
+ import java.util.Date;
+ import java.util.List;
++import java.util.stream.StreamSupport;
+
+ @Service
+ public class PostService {
+-    private final List<Post> posts = new ArrayList<>(List.of(
+-            new Post(0L, "post1", new Date()),
+-            new Post(1L, "post2", new Date()),
+-            new Post(2L, "post3", new Date())
+-    ));
++    @Autowired
++    PostRepository postRepository;
+
+     public List<Post> listAllPosts() {
+-        return posts;
++        return StreamSupport.stream(postRepository.findAll().spliterator(), false).toList();
+     }
+
+     public void create(final String text) {
+-        posts.add(new Post((long) posts.size(), text, new Date()));
++        Post post = new Post(null, text, new Date());
++        postRepository.save(post);
+     }
+ }
+Index: pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/pom.xml b/pom.xml
+--- a/pom.xml	(revision 375e36083fb077020bbbbd581dc68ae42a7a746c)
++++ b/pom.xml	(date 1707077929319)
+@@ -31,6 +31,15 @@
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+         </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-jpa</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>com.h2database</groupId>
++            <artifactId>h2</artifactId>
++            <scope>runtime</scope>
++        </dependency>
+     </dependencies>
+
+     <build>
+Index: src/main/java/com/example/demo/service/LikesService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/demo/service/LikesService.java b/src/main/java/com/example/demo/service/LikesService.java
+--- a/src/main/java/com/example/demo/service/LikesService.java	(revision 375e36083fb077020bbbbd581dc68ae42a7a746c)
++++ b/src/main/java/com/example/demo/service/LikesService.java	(date 1707078027475)
+@@ -1,17 +1,19 @@
+ package com.example.demo.service;
+
+ import com.example.demo.model.Post;
++import com.example.demo.repository.PostRepository;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.stereotype.Service;
+
+ @Service
+ public class LikesService {
+     @Autowired
+-    private PostService postService;
++    private PostRepository postRepository;
+
+     public Integer like(Long postId) {
+-        final Post post = postService.listAllPosts().get(postId.intValue());
++        final Post post = postRepository.findById(postId).get();
+         post.setLikes(post.getLikes() + 1);
++        postRepository.save(post);
+         return post.getLikes();
+     }
+ }
+Index: src/main/java/com/example/demo/repository/PostRepository.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/demo/repository/PostRepository.java b/src/main/java/com/example/demo/repository/PostRepository.java
+new file mode 100644
++++ b/src/main/java/com/example/demo/repository/PostRepository.java	(date 1707077975323)
+@@ -0,0 +1,7 @@
++package com.example.demo.repository;
++
++import com.example.demo.model.Post;
++import org.springframework.data.repository.CrudRepository;
++
++public interface PostRepository extends CrudRepository<Post, Long> {
++}
+Index: src/main/java/com/example/demo/model/Post.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/demo/model/Post.java b/src/main/java/com/example/demo/model/Post.java
+--- a/src/main/java/com/example/demo/model/Post.java	(revision 375e36083fb077020bbbbd581dc68ae42a7a746c)
++++ b/src/main/java/com/example/demo/model/Post.java	(date 1707078171584)
+@@ -1,13 +1,24 @@
+ package com.example.demo.model;
+
++import jakarta.persistence.Entity;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.Id;
++
++import java.io.Serializable;
+ import java.util.Date;
+
+-public class Post {
++@Entity
++public class Post implements Serializable {
++    @Id
++    @GeneratedValue
+     private Long id;
+     private String text;
+     private Integer likes;
+     private Date creationDate;
+
++    public Post() {
++    }
++
+     public Post(final Long id, final String text, final Date date) {
+         this.id = id;
+         this.text = text;
+Index: src/main/resources/application.properties
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>ISO-8859-1
+===================================================================
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+--- a/src/main/resources/application.properties	(revision 375e36083fb077020bbbbd581dc68ae42a7a746c)
++++ b/src/main/resources/application.properties	(date 1707077929315)
+@@ -1,2 +1,8 @@
+-
+-server.port = 8000
++server.port=8000
++
++spring.datasource.url=jdbc:h2:file:./database
++spring.datasource.driverClassName=org.h2.Driver
++spring.datasource.username=root
++spring.datasource.password=root
++spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
++spring.jpa.hibernate.ddl-auto=update
